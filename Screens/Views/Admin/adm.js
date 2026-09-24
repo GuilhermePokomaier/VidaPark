@@ -33,7 +33,7 @@ export default function ADM({ navigation }) {
         <TouchableOpacity 
           style={styles.card} 
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('GerenciarProduto')}
+          onPress={() => navigation.navigate('SalgadosPacotes')}
         >
           <IconButton icon="package-variant-closed" iconColor="#E84890" size={40} pointerEvents="none" />
           <Text style={styles.cardTxt}>Gerenciar Produtos</Text>

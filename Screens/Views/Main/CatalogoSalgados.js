@@ -429,8 +429,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: COLORS.rosaVidaPark,
-    padding: 16,
+    padding: 10,
     borderTopWidth: 1,
+    borderRadius: 100
 
   },
 

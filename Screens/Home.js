@@ -7,6 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import { auth, db as database } from "../Firebase/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 
+
 const IMG_HEADER_BG = require("../Images/header-bg.jpg");
 const IMG_PACOTES = require("../Images/pacotes-festa.jpg");
 const IMG_SALGADOS = require("../Images/salgados-avulsos.jpg");
@@ -104,7 +105,7 @@ export default function Home({ navigation, route }) {
           <View style={[ styles.sectionUnderline, { backgroundColor: theme.accent }, ]} />
         </View>
 
-        <TouchableOpacity activeOpacity={0.85}style={styles.bannerCard} onPress={() => navigation.navigate("PacotesDeFesta")}>
+        <TouchableOpacity activeOpacity={0.85}style={styles.bannerCard} onPress={() => navigation.navigate("Pacotes")}>
           <ImageBackground source={IMG_PACOTES}style={styles.bannerImage} imageStyle={styles.bannerImageRadius} >
             <View style={[ styles.bannerIconBadge, { backgroundColor: theme.accent }, ]}>
               <Ionicons name="gift-outline" size={18} color={theme.surface} />

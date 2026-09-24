@@ -3,6 +3,9 @@ import { View,Text,StyleSheet,FlatList,Alert,TouchableOpacity,Image,TextInput,} 
 import { Ionicons } from "@expo/vector-icons";
 import { db as database } from "../../../Firebase/firebaseConfig";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import {useTheme} from "../../../context/ThemeContext";
+import SalgadosPacotes from "./SalgadosPacotes";
+
 
 const COLORS = {
   fundo: "#181830",
@@ -27,7 +30,7 @@ const CATEGORIAS = [
   { id: "bebidas", label: "Bebidas", icon: "cafe-outline" },
 ];
 
-export default function GerenciarProduto({ navigation }) {
+export default function GerenciarSalgados({ navigation }) {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");

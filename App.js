@@ -7,11 +7,15 @@ import * as NavigationBar from "expo-navigation-bar";
 import Entypo from '@expo/vector-icons/Entypo';
  
 import Login from './Screens/Views/Auth/Login'
-
+import SalgadosPacotes from "./Screens/Views/Admin/SalgadosPacotes";
 import ADM from "./Screens/Views/Admin/adm";
-import GerenciarProduto from "./Screens/Views/Admin/GerenciarProduto";
+import GerenciarSalgados from "./Screens/Views/Admin/GerenciarSalgados";
+import GerenciarPacotes from "./Screens/Views/Admin/GerenciarPacotes";
 import AddProdutos from "./Screens/Views/Admin/AddProduto";
-import Pagamento from "./Screens/Views/Checkout/Pagamento";
+
+import AddPacote from "./Screens/Views/Admin/AddPacote";
+import EditPacote from "./Screens/Views/Admin/EditPacote";
+
 import Cadastrar from "./Screens/Views/Auth/Cadastrar";
 import EditProduct from "./Screens/Views/Admin/EditProduct";
 import { ProductProvider } from "./context/ProductContext";
@@ -31,6 +35,7 @@ import Carrinho from "./Screens/Views/Checkout/Carrinho";
 import Checkout from "./Screens/Views/Checkout/Checkout";
 import MeusPedidos from "./Screens/MeusPedidos";
 import TamanhoCombo from "./Screens/TamanhoCombo";
+import Pacotes from "./Screens/Pacotes";
  
 function TabNavigate() {
   const Tab = createBottomTabNavigator();
@@ -51,8 +56,6 @@ function TabNavigate() {
         tabBarInactiveTintColor: theme.textMuted,
       }}
     >
-
-      
 
 
       <Tab.Screen name="Home" component={Home}
@@ -131,16 +134,29 @@ function AppContent() {
           headerTitleStyle: { color: "#fff" },
         }} />
  
+        
         <Stack.Screen name="ADM" component={ADM} options={{
           headerShown: false
         }} />
+
+        <Stack.Screen name="SalgadosPacotes" component={SalgadosPacotes} options={{
+          headerShown: false
+        }} />
+
  
-        <Stack.Screen name="GerenciarProduto" component={GerenciarProduto} options={{
-          title: 'Gerenciar Produto',
+        <Stack.Screen name="GerenciarSalgados" component={GerenciarSalgados} options={{
+          title: 'Gerenciar Salgados',
           headerStyle: { backgroundColor: '#202040' },
           headerTintColor: '#F8F8F8',
         }} />
  
+         <Stack.Screen name="GerenciarPacotes" component={GerenciarPacotes} options={{
+          title: 'Gerenciar Pacotes',
+          headerStyle: { backgroundColor: '#202040' },
+          headerTintColor: '#F8F8F8',
+        }} />
+
+
         <Stack.Screen name="GerenciarVendas" component={GerenciarVendas} options={{
           title: 'Gerenciar Vendas',
           headerStyle: { backgroundColor: '#202040' },
@@ -153,23 +169,29 @@ function AppContent() {
           headerTintColor: '#F8F8F8',
         }} />
  
-        <Stack.Screen name="AddProdutos" component={AddProdutos} options={{
-          headerShown: false
-        }} />
-        <Stack.Screen name="EditProduct" component={EditProduct} options={{
+        <Stack.Screen name="AddPacote" component={AddPacote}
+        options={{ headerShown: false, }}/>
+
+          <Stack.Screen name="EditPacote" component={EditPacote}
+             options={{ headerShown: false, }}/>
+
+
+        
+        <Stack.Screen name="Home" component={TabNavigate} options={{
           headerShown: false
         }} />
 
 
-         <Stack.Screen name="Home" component={TabNavigate} options={{
-          headerShown: false
-        }} />
 
         <Stack.Screen name="catalogo" component={TabNavigate} options={{
           headerShown: false
         }} />
 
         <Stack.Screen name="TamanhoCombo" component={TamanhoCombo} options={{
+          headerShown: false
+        }} />
+
+        <Stack.Screen name="Pacotes" component={Pacotes} options={{
           headerShown: false
         }} />
         
