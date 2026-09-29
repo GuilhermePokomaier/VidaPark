@@ -3,7 +3,8 @@ import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../../../Firebase/firebaseConfig";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import {callFunction} from "../Checkout/mercadopago";
 
 function addressesCollection(uid) {
   return collection(db, "users", uid, "addresses");
@@ -64,7 +65,7 @@ export default function Checkout({ navigation, route }) {
   const taxaEntrega = route?.params?.taxaEntrega || 5;
   const totalGeral = route?.params?.totalGeral || totalCombo + taxaEntrega;
 
-  // Endereço agora vem do Firestore (users/{uid}/addresses),
+  // Endereço vem do Firestore (users/{uid}/addresses),
   // priorizando o que está marcado como "selected" na tela Addresses.
   const [endereco, setEndereco] = useState(null);
   const [carregandoEndereco, setCarregandoEndereco] = useState(true);
@@ -88,8 +89,7 @@ export default function Checkout({ navigation, route }) {
       const snapshot = await getDocs(addressesCollection(uid));
       const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      // Prioridade: endereço marcado como padrão (selected: true).
-      // Se nenhum estiver marcado, cai no primeiro da lista como fallback.
+  
       const marcado = list.find((a) => a.selected) || list[0] || null;
 
       setEndereco(marcado);
@@ -101,9 +101,6 @@ export default function Checkout({ navigation, route }) {
     }
   }, []);
 
-  // Recarrega toda vez que a tela ganha foco — assim, ao voltar de
-  // "Addresses" depois de trocar o endereço padrão, o Checkout já
-  // aparece atualizado sem precisar reabrir a tela do zero.
   useFocusEffect(
     useCallback(() => {
       carregarEndereco();
@@ -136,52 +133,50 @@ export default function Checkout({ navigation, route }) {
 
     setEnviando(true);
 
-    // ─────────────────────────────────────────────
-    // TODO: integração real com Mercado Pago
-    // Quando o Firebase estiver configurado, troque este bloco
-    // pela chamada de Cloud Function igual ao Pagamento.js:
-    //
-    // const result = await callFunction("createPreference", {
-    //   amount: totalGeral,
-    //   description: combo.map((i) => i.nome).join(", "),
-    //   payerInfo: { name, email },
-    //   address: getFullAddress(endereco),
-    // });
-    // navigation.navigate("Pagamento", { checkoutUrl: result.initPoint, ... });
-    //
-    // Por enquanto, gravamos o pedido direto como "em_preparacao"
-    // assim que o cliente confirma.
-    // ─────────────────────────────────────────────
-
     try {
-      await addDoc(collection(db, "pedidos"), {
-        userId: uid,
-        itens: combo,
-        unidades: contarUnidades(combo),
-        totalCombo,
-        taxaEntrega,
-        total: totalGeral,
-        data,
-        horario,
-        formaPagamento,
-        endereco: {
-          label: endereco.label || "Endereço",
-          enderecoCompleto: getFullAddress(endereco),
-        },
-        status: "em_preparacao",
-        createdAt: serverTimestamp(),
+      const user = auth.currentUser;
+      const email = user?.email || "cliente@email.com";
+      const name = user?.displayName || "Cliente";
+
+     
+      const result = await callFunction("createPreference", {
+        amount: totalGeral,
+        description: combo.map((item) => item.nome || "Produto").join(", "),
+        payerInfo: { name, email },
+        address: getFullAddress(endereco),
       });
 
       setEnviando(false);
-      navigation.navigate("MeusPedidos", { pedidoConfirmado: true });
+
+    
+      navigation.navigate("Pagamento", {
+        checkoutUrl: result.initPoint,
+        externalRef: result.externalReference,
+        total: totalGeral,
+        pedido: {
+          userId: uid,
+          itens: combo,
+          unidades: contarUnidades(combo),
+          totalCombo,
+          taxaEntrega,
+          total: totalGeral,
+          data,
+          horario,
+          formaPagamento,
+          endereco: {
+            label: endereco.label || "Endereço",
+            enderecoCompleto: getFullAddress(endereco),
+          },
+        },
+      });
     } catch (error) {
-      console.error("ERRO AO CONFIRMAR PEDIDO:", error);
+      console.error("Erro ao criar preferência de pagamento:", error);
 
       setEnviando(false);
 
       Alert.alert(
         "Erro",
-        error?.message || "Não foi possível confirmar o pedido. Tente novamente."
+        error?.message || "Não foi possível iniciar o pagamento. Tente novamente."
       );
     }
   }
@@ -284,9 +279,11 @@ export default function Checkout({ navigation, route }) {
           onPress={confirmarPedido}
           disabled={enviando}
         >
-          <Text style={styles.confirmarButtonText}>
-            {enviando ? "PROCESSANDO..." : "CONFIRMAR PEDIDO"}
-          </Text>
+          {enviando ? (
+            <ActivityIndicator size="small" color={COLORS.branco} />
+          ) : (
+            <Text style={styles.confirmarButtonText}>CONFIRMAR PEDIDO</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

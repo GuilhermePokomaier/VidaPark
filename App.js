@@ -16,6 +16,7 @@ import AddProdutos from "./Screens/Views/Admin/AddProduto";
 import AddPacote from "./Screens/Views/Admin/AddPacote";
 import EditPacote from "./Screens/Views/Admin/EditPacote";
 
+import Pagamento from "./Screens/Views/Checkout/Pagamento";
 import Cadastrar from "./Screens/Views/Auth/Cadastrar";
 import EditProduct from "./Screens/Views/Admin/EditProduct";
 import { ProductProvider } from "./context/ProductContext";
@@ -200,12 +201,17 @@ function AppContent() {
         }} />
 
         
- <Stack.Screen name="Carrinho" component={Carrinho} options={{
+        <Stack.Screen name="Carrinho" component={Carrinho} options={{
           headerShown: false
         }} />
 
 
         <Stack.Screen name="Checkout" component={Checkout} options={{
+          headerShown: false
+        }} />
+
+
+        <Stack.Screen name="Pagamento" component={Pagamento} options={{
           headerShown: false
         }} />
 
