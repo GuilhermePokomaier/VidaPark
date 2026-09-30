@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../../../Firebase/firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
-import {callFunction} from "../Checkout/mercadopago";
+import { callFunction } from "../Checkout/mercadopago";
 
 function addressesCollection(uid) {
   return collection(db, "users", uid, "addresses");
@@ -89,7 +89,8 @@ export default function Checkout({ navigation, route }) {
       const snapshot = await getDocs(addressesCollection(uid));
       const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  
+      // Prioridade: endereço marcado como padrão (selected: true).
+      // Se nenhum estiver marcado, cai no primeiro da lista como fallback.
       const marcado = list.find((a) => a.selected) || list[0] || null;
 
       setEndereco(marcado);
@@ -101,6 +102,9 @@ export default function Checkout({ navigation, route }) {
     }
   }, []);
 
+  // Recarrega toda vez que a tela ganha foco — assim, ao voltar de
+  // "Addresses" depois de trocar o endereço padrão, o Checkout já
+  // aparece atualizado sem precisar reabrir a tela do zero.
   useFocusEffect(
     useCallback(() => {
       carregarEndereco();
@@ -137,37 +141,66 @@ export default function Checkout({ navigation, route }) {
       const user = auth.currentUser;
       const email = user?.email || "cliente@email.com";
       const name = user?.displayName || "Cliente";
+      const description = combo.map((item) => item.nome || "Produto").join(", ");
 
-     
+      const pedidoBase = {
+        userId: uid,
+        itens: combo,
+        unidades: contarUnidades(combo),
+        totalCombo,
+        taxaEntrega,
+        total: totalGeral,
+        data,
+        horario,
+        formaPagamento,
+        endereco: {
+          label: endereco.label || "Endereço",
+          enderecoCompleto: getFullAddress(endereco),
+        },
+      };
+
+      if (formaPagamento === "pix") {
+        // Pix: gera o QR Code direto via createPayment (não usa o checkout
+        // hospedado, que no sandbox não mostra a opção de Pix).
+        const result = await callFunction("createPayment", {
+          paymentMethod: "pix",
+          amount: totalGeral,
+          description,
+          payerInfo: { name, email },
+        });
+
+        setEnviando(false);
+
+        navigation.navigate("Pagamento", {
+          pixData: {
+            paymentId: result.payment.id,
+            qrCode: result.payment.qrCode,
+            qrCodeBase64: result.payment.qrCodeBase64,
+            ticketUrl: result.payment.ticketUrl,
+          },
+          total: totalGeral,
+          pedido: pedidoBase,
+        });
+        return;
+      }
+
+      // Cartão / débito: continua pelo checkout hospedado do Mercado Pago
       const result = await callFunction("createPreference", {
         amount: totalGeral,
-        description: combo.map((item) => item.nome || "Produto").join(", "),
+        description,
         payerInfo: { name, email },
         address: getFullAddress(endereco),
       });
 
       setEnviando(false);
 
-    
+      // O pedido só é gravado no Firestore depois que o pagamento for
+      // confirmado (isso acontece dentro da tela "Pagamento").
       navigation.navigate("Pagamento", {
         checkoutUrl: result.initPoint,
         externalRef: result.externalReference,
         total: totalGeral,
-        pedido: {
-          userId: uid,
-          itens: combo,
-          unidades: contarUnidades(combo),
-          totalCombo,
-          taxaEntrega,
-          total: totalGeral,
-          data,
-          horario,
-          formaPagamento,
-          endereco: {
-            label: endereco.label || "Endereço",
-            enderecoCompleto: getFullAddress(endereco),
-          },
-        },
+        pedido: pedidoBase,
       });
     } catch (error) {
       console.error("Erro ao criar preferência de pagamento:", error);

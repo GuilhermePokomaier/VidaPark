@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { WebView } from "react-native-webview";
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Image, ScrollView } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { auth, db } from "../../../Firebase/firebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { callFunction } from "../Checkout/mercadopago";
@@ -14,22 +15,30 @@ export default function Pagamento({ navigation, route }) {
   // a referência externa pra consultar o status, o total e os dados
   // do pedido que serão gravados no Firestore assim que o pagamento
   // for confirmado.
-  const { checkoutUrl: initialCheckoutUrl, externalRef, total, pedido } = route?.params || {};
+  const { checkoutUrl: initialCheckoutUrl, externalRef, total, pedido, pixData } = route?.params || {};
 
   const [checkoutUrl, setCheckoutUrl] = useState(initialCheckoutUrl || null);
   const [paymentResult, setPaymentResult] = useState(null);
   const [polling, setPolling] = useState(false);
   const [salvandoPedido, setSalvandoPedido] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const pollingRef = useRef(null);
 
   useEffect(() => {
-    if (!initialCheckoutUrl) {
+    if (!initialCheckoutUrl && !pixData) {
       Alert.alert(
         "Erro",
         "Não foi possível abrir o pagamento. Volte e tente novamente.",
         [{ text: "Voltar", onPress: () => navigation.goBack() }]
       );
+      return;
+    }
+
+    // Se veio um pagamento Pix já criado, começa a checar o status
+    // automaticamente em segundo plano.
+    if (pixData?.paymentId) {
+      startPixPolling(pixData.paymentId);
     }
 
     return () => {
@@ -40,6 +49,65 @@ export default function Pagamento({ navigation, route }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function startPixPolling(paymentId) {
+    if (pollingRef.current) return;
+
+    setPolling(true);
+
+    let attempts = 0;
+    const maxAttempts = 24; // ~2 minutos (5s de intervalo)
+
+    pollingRef.current = setInterval(async () => {
+      attempts++;
+
+      try {
+        const result = await callFunction("getPaymentStatus", { paymentId });
+
+        if (result.success && result.payment?.status === "approved") {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setPolling(false);
+          await finalizarComoAprovado(result.payment.id);
+          return;
+        }
+
+        if (result.success && (result.payment?.status === "rejected" || result.payment?.status === "cancelled")) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          setPolling(false);
+          setPaymentResult({
+            status: "rejected",
+            statusDetail: result.payment.statusDetail || "Pagamento recusado ou cancelado",
+            transactionAmount: total,
+            paymentId,
+          });
+          return;
+        }
+      } catch (e) {
+        console.log("Erro ao verificar Pix:", e);
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+        setPolling(false);
+        setPaymentResult({
+          status: "pending",
+          statusDetail: "Pagamento ainda não confirmado. Verifique sua conta ou aguarde.",
+          transactionAmount: total,
+          paymentId,
+        });
+      }
+    }, 5000);
+  }
+
+  async function copiarCodigoPix() {
+    if (!pixData?.qrCode) return;
+    await Clipboard.setStringAsync(pixData.qrCode);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
 
   // Grava o pedido no Firestore só depois que o pagamento é confirmado.
   const salvarPedido = useCallback(
@@ -264,6 +332,50 @@ export default function Pagamento({ navigation, route }) {
     );
   }
 
+  if (pixData && !checkoutUrl) {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.headerBack}>Voltar</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.headerTitle}>Pagamento Pix</Text>
+
+          <View style={{ width: 50 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.pixContent}>
+          <Text style={styles.pixAmount}>{formatMoney(total)}</Text>
+
+          {pixData.qrCodeBase64 ? (
+            <Image
+              source={{ uri: `data:image/png;base64,${pixData.qrCodeBase64}` }}
+              style={styles.qrImage}
+            />
+          ) : (
+            <Text style={styles.loadingText}>QR Code indisponível</Text>
+          )}
+
+          <Text style={styles.pixInstrucao}>
+            Escaneie o QR Code no app do seu banco, ou copie o código Pix abaixo:
+          </Text>
+
+          <TouchableOpacity style={styles.copyButton} onPress={copiarCodigoPix}>
+            <Text style={styles.copyButtonText}>
+              {copiado ? "Copiado!" : "Copiar código Pix"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.pixStatusRow}>
+            <ActivityIndicator size="small" color="#8b3151" />
+            <Text style={styles.pixStatusText}>Aguardando confirmação do pagamento...</Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (checkoutUrl) {
     return (
       <View style={{ flex: 1 }}>
@@ -428,5 +540,52 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  pixContent: {
+    padding: 24,
+    alignItems: "center",
+    backgroundColor: "#eadde1",
+    flexGrow: 1,
+  },
+  pixAmount: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#8b3151",
+    marginBottom: 16,
+  },
+  qrImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 16,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+  },
+  pixInstrucao: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  copyButton: {
+    backgroundColor: "#8b3151",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 30,
+    marginBottom: 24,
+  },
+  copyButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  pixStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pixStatusText: {
+    fontSize: 13,
+    color: "#8b3151",
   },
 });
