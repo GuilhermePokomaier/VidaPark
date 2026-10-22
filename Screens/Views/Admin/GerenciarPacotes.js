@@ -1,17 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from "react";
 
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Alert,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  ActivityIndicator,
-} from "react-native";
+import {View,Text,StyleSheet,FlatList,Alert,TouchableOpacity,Image,TextInput,ActivityIndicator} from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -38,6 +27,7 @@ const COLORS = {
   verdeFundo: "rgba(34, 197, 94, 0.15)",
   azulEditar: "#4C6EF5",
   vermelhoExcluir: "#EF4444",
+  alerta: "#F59E0B",
 };
 
 export default function GerenciarPacotes({ navigation }) {
@@ -177,7 +167,8 @@ export default function GerenciarPacotes({ navigation }) {
       return (
         (item.nome || "").toLowerCase().includes(termo) ||
         (item.descricao || "").toLowerCase().includes(termo) ||
-        (item.ambiente || "").toLowerCase().includes(termo)
+        (item.ambiente || "").toLowerCase().includes(termo) ||
+        (item.categoria || "").toLowerCase().includes(termo)
       );
     });
   }, [pacotes, busca]);
@@ -309,7 +300,7 @@ export default function GerenciarPacotes({ navigation }) {
 
         </View>
 
-        {/* STATUS */}
+        {/* STATUS + CATEGORIA */}
         <View style={styles.statusRow}>
 
           <View
@@ -344,6 +335,42 @@ export default function GerenciarPacotes({ navigation }) {
               {disponivel
                 ? "Disponível"
                 : "Indisponível"}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.status,
+              item.categoria
+                ? styles.categoriaTag
+                : styles.semCategoria,
+            ]}
+          >
+            <Ionicons
+              name={
+                item.categoria
+                  ? "pricetag-outline"
+                  : "alert-circle-outline"
+              }
+              size={11}
+              color={
+                item.categoria
+                  ? COLORS.rosaClaro
+                  : COLORS.alerta
+              }
+            />
+
+            <Text
+              style={[
+                styles.statusTexto,
+                {
+                  color: item.categoria
+                    ? COLORS.rosaClaro
+                    : COLORS.alerta,
+                },
+              ]}
+            >
+              {item.categoria || "Sem categoria"}
             </Text>
           </View>
 
@@ -640,6 +667,9 @@ const styles = StyleSheet.create({
   },
 
   statusRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     marginTop: 10,
   },
 
@@ -659,6 +689,14 @@ const styles = StyleSheet.create({
 
   statusIndisponivel: {
     backgroundColor: "rgba(239, 68, 68, 0.15)",
+  },
+
+  categoriaTag: {
+    backgroundColor: "rgba(232, 72, 144, 0.15)",
+  },
+
+  semCategoria: {
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
   },
 
   statusBolinha: {
@@ -763,4 +801,3 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
 });
-

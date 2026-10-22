@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  View, FlatList, StyleSheet, Text, ActivityIndicator,
-  TextInput, TouchableOpacity, ScrollView,
+import {View, FlatList, StyleSheet, Text, ActivityIndicator,TextInput, TouchableOpacity, ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs } from "firebase/firestore";
