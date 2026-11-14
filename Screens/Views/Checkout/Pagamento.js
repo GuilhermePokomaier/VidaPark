@@ -11,6 +11,10 @@ function formatMoney(value) {
   return `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
 }
 
+// ⚠️ APENAS PARA TESTES: mostra o botão "Simular pagamento aprovado" na tela do Pix.
+// Coloque false (ou apague este bloco) quando for publicar o app de verdade.
+const MODO_TESTE_PIX = false;
+
 export default function Pagamento({ navigation, route }) {
   // Vem da tela Checkout: link de pagamento já criado (createPreference),
   // a referência externa pra consultar o status, o total e os dados
@@ -109,6 +113,13 @@ const salvouRef = useRef(false);
     await Clipboard.setStringAsync(pixData.qrCode);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  }
+
+  // ⚠️ SOMENTE TESTE: confirma o pedido como aprovado sem passar pelo banco.
+  // Usa o mesmo fluxo do pagamento aprovado (salva o pedido e mostra a tela de sucesso).
+  async function simularPagamentoAprovado() {
+    const idTeste = `teste_${Date.now()}`;
+    await finalizarComoAprovado(idTeste);
   }
 
  const salvarPedido = useCallback(
@@ -383,6 +394,18 @@ const salvouRef = useRef(false);
             <ActivityIndicator size="small" color="#8b3151" />
             <Text style={styles.pixStatusText}>Aguardando confirmação do pagamento...</Text>
           </View>
+
+          {MODO_TESTE_PIX && (
+            <TouchableOpacity
+              style={styles.testPayButton}
+              onPress={simularPagamentoAprovado}
+              accessibilityRole="button"
+              accessibilityLabel="Simular pagamento aprovado"
+            >
+              <Text style={styles.testPayButtonText}>Simular pagamento aprovado (teste)</Text>
+              <Text style={styles.testPayButtonHint}>Não cobra nada — só para testes</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
     );
@@ -599,5 +622,24 @@ const styles = StyleSheet.create({
   pixStatusText: {
     fontSize: 13,
     color: "#8b3151",
+  },
+  testPayButton: {
+    marginTop: 24,
+    backgroundColor: "#E84890",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    alignSelf: "stretch",
+  },
+  testPayButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  testPayButtonHint: {
+    color: "#FFE3F0",
+    fontSize: 11,
+    marginTop: 2,
   },
 });

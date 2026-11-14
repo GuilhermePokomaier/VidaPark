@@ -1,7 +1,10 @@
 import { View, Text, StyleSheet, FlatList, Alert, Modal, TouchableOpacity, ScrollView } from 'react-native';
-import { IconButton, Button } from 'react-native-paper';
+import { Button } from 'react-native-paper';
 import { db as database } from '../../../Firebase/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, arrayUnion,} from 'firebase/firestore';
+import {
+  collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc,
+  writeBatch, serverTimestamp, arrayUnion,
+} from 'firebase/firestore';
 import { useTheme } from '../../../context/ThemeContext';
 import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +30,12 @@ const PROXIMO = {
 
 const FINAIS = ['entregue', 'cancelado'];
 
+const ABAS = [
+  { id: 'andamento', label: 'Em andamento' },
+  { id: 'finalizados', label: 'Finalizados' },
+  { id: 'arquivados', label: 'Arquivados' },
+];
+
 const pad = (n) => String(n).padStart(2, '0');
 
 function formatarDataHoraISO(iso) {
@@ -35,9 +44,38 @@ function formatarDataHoraISO(iso) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// createdAt vem do Firestore como Timestamp
+function formatarCriadoEm(ts) {
+  const d = ts?.toDate ? ts.toDate() : null;
+  if (!d || isNaN(d.getTime())) return '';
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Pedidos de versões antigas do app: foram criados antes do pagamento
+// e não têm nenhum vínculo com o Mercado Pago.
+function ehAntigoSemPagamento(venda) {
+  return !venda?.mpPaymentId && !venda?.mpExternalReference;
+}
+
+function grupoDaVenda(venda) {
+  if (venda.arquivado === true) return 'arquivados';
+  if (FINAIS.includes(String(venda.status || '').toLowerCase())) return 'finalizados';
+  return 'andamento';
+}
+
+// O Firestore aceita no máximo 500 operações por lote
+async function executarEmLotes(lista, aplicar) {
+  for (let i = 0; i < lista.length; i += 400) {
+    const lote = writeBatch(database);
+    lista.slice(i, i + 400).forEach((venda) => aplicar(lote, doc(database, 'pedidos', venda.id)));
+    await lote.commit();
+  }
+}
+
 export default function GerenciarVendas({ navigation }) {
   const { theme } = useTheme();
   const [vendas, setVendas] = useState([]);
+  const [abaAtiva, setAbaAtiva] = useState('andamento');
   const [vendaSelecionadaId, setVendaSelecionadaId] = useState(null);
   const [modalVisivel, setModalVisivel] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
@@ -63,6 +101,10 @@ export default function GerenciarVendas({ navigation }) {
 
     return () => cancelar();
   }, []);
+
+  const contagem = { andamento: 0, finalizados: 0, arquivados: 0 };
+  vendas.forEach((v) => { contagem[grupoDaVenda(v)] += 1; });
+  const vendasDaAba = vendas.filter((v) => grupoDaVenda(v) === abaAtiva);
 
   async function alterarStatusVenda(id, novoStatus) {
     if (!id) {
@@ -92,6 +134,102 @@ export default function GerenciarVendas({ navigation }) {
       { text: "Não", style: "cancel" },
       { text: "Cancelar pedido", style: "destructive", onPress: () => alterarStatusVenda(id, 'cancelado') },
     ]);
+  }
+
+  // Arquivar só esconde da lista principal: o pedido continua guardado no histórico de vendas.
+  async function arquivarVenda(id, arquivar) {
+    try {
+      setAtualizando(true);
+      await updateDoc(doc(database, 'pedidos', id), {
+        arquivado: arquivar,
+        arquivadoEm: arquivar ? serverTimestamp() : null,
+      });
+      setModalVisivel(false);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Erro", arquivar ? "Não foi possível arquivar o pedido." : "Não foi possível desarquivar o pedido.");
+    } finally {
+      setAtualizando(false);
+    }
+  }
+
+  function confirmarExclusao(id) {
+    Alert.alert(
+      "Excluir pedido",
+      "O pedido será apagado de vez e não poderá ser recuperado. Deseja continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setAtualizando(true);
+              await deleteDoc(doc(database, 'pedidos', id));
+              setModalVisivel(false);
+            } catch (error) {
+              console.log(error);
+              Alert.alert("Erro", "Não foi possível excluir o pedido.");
+            } finally {
+              setAtualizando(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function confirmarArquivarTodos() {
+    const lista = vendasDaAba;
+    Alert.alert(
+      "Arquivar finalizados",
+      `Arquivar ${lista.length} pedido(s) entregue(s) ou cancelado(s)? Eles saem desta lista mas continuam guardados em "Arquivados".`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Arquivar todos",
+          onPress: async () => {
+            try {
+              setAtualizando(true);
+              await executarEmLotes(lista, (lote, ref) =>
+                lote.update(ref, { arquivado: true, arquivadoEm: serverTimestamp() })
+              );
+            } catch (error) {
+              console.log(error);
+              Alert.alert("Erro", "Não foi possível arquivar todos os pedidos.");
+            } finally {
+              setAtualizando(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function confirmarExcluirArquivados() {
+    const lista = vendasDaAba;
+    Alert.alert(
+      "Excluir arquivados",
+      `Apagar de vez ${lista.length} pedido(s) arquivado(s)? Isso não pode ser desfeito.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir todos",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setAtualizando(true);
+              await executarEmLotes(lista, (lote, ref) => lote.delete(ref));
+            } catch (error) {
+              console.log(error);
+              Alert.alert("Erro", "Não foi possível excluir todos os pedidos.");
+            } finally {
+              setAtualizando(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   function traduzirStatus(status) {
@@ -141,21 +279,58 @@ export default function GerenciarVendas({ navigation }) {
   }
 
   const statusAtual = String(vendaSelecionada?.status || '').toLowerCase();
-  const proximo = PROXIMO[statusAtual];
+  const antigo = vendaSelecionada ? ehAntigoSemPagamento(vendaSelecionada) : false;
+  const proximo = antigo ? null : PROXIMO[statusAtual];
   const finalizado = FINAIS.includes(statusAtual);
+  const arquivado = vendaSelecionada?.arquivado === true;
+
+  const textoVazio = {
+    andamento: 'Nenhum pedido em andamento',
+    finalizados: 'Nenhum pedido finalizado',
+    arquivados: 'Nenhum pedido arquivado',
+  }[abaAtiva];
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={[styles.txt, { color: theme.primary }]}>Controle de Vendas</Text>
 
+      <View style={[styles.abasWrapper, { borderBottomColor: theme.border }]}>
+        {ABAS.map((aba) => {
+          const ativa = abaAtiva === aba.id;
+          return (
+            <TouchableOpacity key={aba.id} style={styles.abaItem} onPress={() => setAbaAtiva(aba.id)}>
+              <Text style={[styles.abaLabel, { color: ativa ? theme.primary : theme.text }, ativa && styles.abaLabelAtiva]}>
+                {aba.label} ({contagem[aba.id]})
+              </Text>
+              {ativa && <View style={[styles.abaIndicador, { backgroundColor: theme.primary }]} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {abaAtiva === 'finalizados' && vendasDaAba.length > 0 ? (
+        <Button mode="outlined" textColor={theme.primary} style={[styles.btnLote, { borderColor: theme.primary }]}
+          disabled={atualizando} onPress={confirmarArquivarTodos}>
+          Arquivar todos os finalizados
+        </Button>
+      ) : null}
+
+      {abaAtiva === 'arquivados' && vendasDaAba.length > 0 ? (
+        <Button mode="outlined" textColor="#C93678" style={[styles.btnLote, { borderColor: '#C93678' }]}
+          disabled={atualizando} onPress={confirmarExcluirArquivados}>
+          Excluir todos os arquivados
+        </Button>
+      ) : null}
+
       <View style={styles.cardContainer}>
         <FlatList
-          data={vendas}
+          data={vendasDaAba}
           keyExtractor={item => item.id}
           contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
           renderItem={({ item }) => {
             const nomeExibicao = descreverItens(item.itens);
             const endereco = item.endereco?.enderecoCompleto;
+            const criadoEm = formatarCriadoEm(item.createdAt);
 
             return (
               <TouchableOpacity style={[styles.itemVenda, { borderBottomColor: theme.border }]} onPress={() => abrirComprovante(item)} activeOpacity={0.8}>
@@ -169,6 +344,11 @@ export default function GerenciarVendas({ navigation }) {
                   <Text style={[styles.txtStatus, obterEstiloStatus(item.status)]}>
                     Status: {traduzirStatus(item.status)}
                   </Text>
+                  {criadoEm ? (
+                    <Text style={[styles.txtEndereco, { color: theme.text }]} numberOfLines={1}>
+                      Pedido em: {criadoEm}
+                    </Text>
+                  ) : null}
                   {item.data ? (
                     <Text style={[styles.txtEndereco, { color: theme.text }]} numberOfLines={1}>
                       Entrega: {item.data}{item.horario ? ` às ${item.horario}` : ''}
@@ -179,6 +359,9 @@ export default function GerenciarVendas({ navigation }) {
                       Endereço: {endereco}
                     </Text>
                   ) : null}
+                  {ehAntigoSemPagamento(item) ? (
+                    <Text style={styles.txtAviso}>Pedido antigo, sem pagamento confirmado</Text>
+                  ) : null}
                 </View>
                 <Ionicons name="receipt-outline" size={24} color={theme.primary} style={{ marginRight: 6 }} />
               </TouchableOpacity>
@@ -187,7 +370,7 @@ export default function GerenciarVendas({ navigation }) {
           ListEmptyComponent={
             <View style={styles.vazioContainer}>
               <Ionicons name="receipt-outline" size={80} color={theme.primary} style={styles.iconeVazio} />
-              <Text style={[styles.txtVazio, { color: theme.primary }]}>Nenhuma venda registrada ainda</Text>
+              <Text style={[styles.txtVazio, { color: theme.primary }]}>{textoVazio}</Text>
             </View>
           }
         />
@@ -211,6 +394,13 @@ export default function GerenciarVendas({ navigation }) {
                 <>
                   <Text style={styles.reciboTextoLabel}>ID DO PEDIDO:</Text>
                   <Text style={styles.reciboTextoValor}>{vendaSelecionada.id}</Text>
+
+                  {formatarCriadoEm(vendaSelecionada.createdAt) ? (
+                    <>
+                      <Text style={styles.reciboTextoLabel}>PEDIDO FEITO EM:</Text>
+                      <Text style={styles.reciboTextoValor}>{formatarCriadoEm(vendaSelecionada.createdAt)}</Text>
+                    </>
+                  ) : null}
 
                   {vendaSelecionada.clienteNome ? (
                     <>
@@ -261,6 +451,12 @@ export default function GerenciarVendas({ navigation }) {
                   <Text style={[styles.reciboStatus, obterEstiloStatus(vendaSelecionada.status)]}>
                     {traduzirStatus(vendaSelecionada.status).toUpperCase()}
                   </Text>
+
+                  {antigo ? (
+                    <Text style={styles.reciboAviso}>
+                      Pedido antigo, sem pagamento confirmado. Pode ser excluído.
+                    </Text>
+                  ) : null}
                 </>
               ) : (
                 <Text style={styles.reciboTextoValor}>Nenhuma venda selecionada</Text>
@@ -269,7 +465,7 @@ export default function GerenciarVendas({ navigation }) {
 
             <Text style={styles.reciboLinha}>-----------------------------------------</Text>
 
-            {vendaSelecionada && !finalizado ? (
+            {vendaSelecionada && !finalizado && !arquivado ? (
               <View style={styles.botoesModal}>
                 {proximo ? (
                   <Button
@@ -283,7 +479,9 @@ export default function GerenciarVendas({ navigation }) {
                     {proximo.label}
                   </Button>
                 ) : (
-                  <Text style={styles.aguardandoTexto}>Aguardando confirmação do pagamento</Text>
+                  <Text style={styles.aguardandoTexto}>
+                    {antigo ? 'Sem pagamento confirmado' : 'Aguardando confirmação do pagamento'}
+                  </Text>
                 )}
                 <Button
                   mode="contained"
@@ -293,6 +491,42 @@ export default function GerenciarVendas({ navigation }) {
                   onPress={() => confirmarCancelamento(vendaSelecionada.id)}
                 >
                   Cancelar
+                </Button>
+              </View>
+            ) : null}
+
+            {vendaSelecionada && !finalizado && !arquivado && antigo ? (
+              <Button
+                mode="outlined"
+                textColor="#C93678"
+                style={[styles.btnFechar, { borderColor: '#C93678' }]}
+                disabled={atualizando}
+                onPress={() => confirmarExclusao(vendaSelecionada.id)}
+              >
+                Excluir pedido
+              </Button>
+            ) : null}
+
+            {vendaSelecionada && (finalizado || arquivado) ? (
+              <View style={styles.botoesModal}>
+                <Button
+                  mode="contained"
+                  buttonColor="#E84890"
+                  style={styles.btnAcao}
+                  loading={atualizando}
+                  disabled={atualizando}
+                  onPress={() => arquivarVenda(vendaSelecionada.id, !arquivado)}
+                >
+                  {arquivado ? 'Desarquivar' : 'Arquivar'}
+                </Button>
+                <Button
+                  mode="contained"
+                  buttonColor="#C93678"
+                  style={styles.btnAcao}
+                  disabled={atualizando}
+                  onPress={() => confirmarExclusao(vendaSelecionada.id)}
+                >
+                  Excluir
                 </Button>
               </View>
             ) : null}
@@ -317,7 +551,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 50,
+    marginBottom: 16,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 3, height: 3 },
     textShadowRadius: 6,
@@ -371,6 +605,47 @@ const styles = StyleSheet.create({
   },
   statusRecusado: {
     color: '#C93678',
+  },
+  abasWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+  },
+  abaItem: {
+    marginRight: 18,
+    paddingBottom: 10,
+    alignItems: 'center',
+  },
+  abaLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    opacity: 0.7,
+  },
+  abaLabelAtiva: {
+    opacity: 1,
+    fontWeight: 'bold',
+  },
+  abaIndicador: {
+    marginTop: 6,
+    height: 3,
+    width: '100%',
+    borderRadius: 2,
+  },
+  btnLote: {
+    marginHorizontal: 20,
+    marginTop: 12,
+  },
+  txtAviso: {
+    fontSize: 11,
+    marginTop: 3,
+    color: '#C93678',
+    fontWeight: 'bold',
+  },
+  reciboAviso: {
+    fontSize: 12,
+    color: '#C93678',
+    textAlign: 'center',
+    marginTop: 10,
   },
   vazioContainer: {
     flex: 1,

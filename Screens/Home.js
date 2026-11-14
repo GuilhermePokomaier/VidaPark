@@ -1,29 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  ImageBackground,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import {View, ScrollView, Text, TouchableOpacity, ImageBackground, StyleSheet,ActivityIndicator} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import About from "../components/About";
 import Contact from "../components/Contact";
 import { useTheme } from "../context/ThemeContext";
 import { auth, db as database } from "../Firebase/firebaseConfig";
-import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-} from "firebase/firestore";
+import {doc, getDoc, collection, query, where, orderBy, limit, getDocs} from "firebase/firestore";
 
 const IMG_HEADER_BG = require("../Images/header-bg.jpg");
 const IMG_PACOTES = require("../Images/pacotes-festa.jpg");

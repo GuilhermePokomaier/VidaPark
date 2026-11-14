@@ -1,9 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../Firebase/firebaseConfig";
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 
 // ─────────────────────────────────────────────
 // PALETA "VIDA PARK"
@@ -50,6 +50,13 @@ function statusInfo(status) {
   }
 }
 
+// O id do banco é grande (ex.: mp_1234567890); para o cliente mostramos só o final.
+function numeroDoPedido(id) {
+  return String(id || "").replace(/^mp_/, "").slice(-6).toUpperCase();
+}
+
+const FINALIZADOS = ["entregue", "cancelado"];
+
 function formatarPreco(valor) {
   return `R$ ${Number(valor || 0).toFixed(2).replace(".", ",")}`;
 }
@@ -58,10 +65,12 @@ export default function MeusPedidos({ navigation }) {
   const [abaAtiva, setAbaAtiva] = useState("todos");
   const [pedidos, setPedidos] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(false);
 
   const carregarPedidos = useCallback(async () => {
     try {
       setCarregando(true);
+      setErro(false);
 
       const uid = auth.currentUser?.uid;
 
@@ -73,30 +82,35 @@ export default function MeusPedidos({ navigation }) {
 
       const pedidosRef = collection(db, "pedidos");
 
-      const pedidosQuery = query(
-        pedidosRef,
-        where("userId", "==", uid),
-        orderBy("createdAt", "desc")
-      );
+      // Sem orderBy na consulta: assim não precisa de índice no Firestore.
+      // A ordenação (mais recente primeiro) é feita aqui no app.
+      const pedidosQuery = query(pedidosRef, where("userId", "==", uid));
 
       const snapshot = await getDocs(pedidosQuery);
 
-      const lista = snapshot.docs.map((item) => {
-        const dados = item.data();
+      const lista = snapshot.docs
+        .map((item) => {
+          const dados = item.data();
 
-        return {
-          id: item.id,
-          status: dados.status || "em_preparacao",
-          data: dados.data || "",
-          horario: dados.horario || "",
-          unidades: dados.unidades || 0,
-          total: dados.total || 0,
-        };
-      });
+          return {
+            id: item.id,
+            status: dados.status || "em_preparacao",
+            data: dados.data || "",
+            horario: dados.horario || "",
+            unidades: dados.unidades || 0,
+            total: dados.total || 0,
+            oculto: dados.ocultoCliente === true,
+            criadoEm: dados.createdAt?.seconds || 0,
+          };
+        })
+        // pedidos que o cliente removeu do histórico não aparecem
+        .filter((pedido) => !pedido.oculto)
+        .sort((a, b) => b.criadoEm - a.criadoEm);
 
       setPedidos(lista);
     } catch (error) {
       console.error("ERRO AO CARREGAR PEDIDOS:", error);
+      setErro(true);
       setPedidos([]);
     } finally {
       setCarregando(false);
@@ -111,6 +125,30 @@ export default function MeusPedidos({ navigation }) {
       carregarPedidos();
     }, [carregarPedidos])
   );
+
+  // "Remover do histórico" só esconde o pedido para o cliente: a loja continua com o registro.
+  function confirmarRemocao(pedido) {
+    Alert.alert(
+      "Remover do histórico",
+      "Este pedido deixará de aparecer na sua lista. Deseja remover?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await updateDoc(doc(db, "pedidos", pedido.id), { ocultoCliente: true });
+              setPedidos((anteriores) => anteriores.filter((p) => p.id !== pedido.id));
+            } catch (e) {
+              console.log("Erro ao remover pedido:", e);
+              Alert.alert("Erro", "Não foi possível remover o pedido. Tente novamente.");
+            }
+          },
+        },
+      ]
+    );
+  }
 
   const pedidosFiltrados = pedidos.filter((pedido) => {
     if (abaAtiva === "todos") return true;
@@ -156,6 +194,14 @@ export default function MeusPedidos({ navigation }) {
         <View style={styles.emptyBox}>
           <ActivityIndicator size="large" color={COLORS.rosaVidaPark} />
         </View>
+      ) : erro ? (
+        <View style={styles.emptyBox}>
+          <Ionicons name="cloud-offline-outline" size={48} color={COLORS.textoMutado} />
+          <Text style={styles.emptyText}>Não foi possível carregar seus pedidos</Text>
+          <TouchableOpacity onPress={carregarPedidos}>
+            <Text style={styles.verDetalhesLink}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
       ) : pedidosFiltrados.length === 0 ? (
         <View style={styles.emptyBox}>
           <Ionicons name="receipt-outline" size={48} color={COLORS.textoMutado} />
@@ -176,7 +222,7 @@ export default function MeusPedidos({ navigation }) {
                 onPress={() => navigation.navigate("PedidoDetalhes", { pedido: item })}
               >
                 <View style={styles.pedidoTopo}>
-                  <Text style={styles.pedidoNumero}>Pedido #{item.id}</Text>
+                  <Text style={styles.pedidoNumero}>Pedido #{numeroDoPedido(item.id)}</Text>
                   <View style={[styles.statusBadge, { backgroundColor: status.fundo }]}>
                     <Text style={[styles.statusTexto, { color: status.cor }]}>{status.label}</Text>
                   </View>
@@ -198,6 +244,13 @@ export default function MeusPedidos({ navigation }) {
                     <Text style={styles.verDetalhesLink}>Ver detalhes ›</Text>
                   )}
                 </View>
+
+                {FINALIZADOS.includes(item.status) ? (
+                  <TouchableOpacity style={styles.removerBotao} onPress={() => confirmarRemocao(item)}>
+                    <Ionicons name="trash-outline" size={14} color={COLORS.textoSecundario} />
+                    <Text style={styles.removerTexto}>Remover do histórico</Text>
+                  </TouchableOpacity>
+                ) : null}
               </TouchableOpacity>
             );
           }}
@@ -231,7 +284,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   headerTitle: {
-    color: COLORS.branco,
+    color: COLORS.rosaVidaPark,
     fontSize: 19,
     fontWeight: "700",
   },
@@ -329,6 +382,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.laranjaAviso,
     fontWeight: "700",
+  },
+
+  removerBotao: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 4,
+  },
+  removerTexto: {
+    fontSize: 12,
+    color: COLORS.textoSecundario,
+    fontWeight: "600",
   },
 
   // Vazio

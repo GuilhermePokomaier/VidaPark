@@ -25,7 +25,6 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import Profile from './Screens/Views/Profile/Profile';
 import EditProfile from './Screens/Views/Auth/EditProfile';
 import ChangePassword from './Screens/Views/Auth/ChangePassword';
-import Purchases from './Screens/Views/Profile/Purchases';
 import Addresses from './Screens/Views/Profile/Addresses';
 import Settings from './Screens/Views/Profile/Settings';
 import GerenciarCliente from './Screens/Views/Admin/GerenciarCliente';
@@ -250,9 +249,6 @@ function AppContent() {
           headerShown: false
         }} />
         <Stack.Screen name="ChangePassword" component={ChangePassword} options={{
-          headerShown: false
-        }} />
-        <Stack.Screen name="Purchases" component={Purchases} options={{
           headerShown: false
         }} />
         <Stack.Screen name="Addresses" component={Addresses} options={{

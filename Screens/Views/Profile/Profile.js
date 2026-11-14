@@ -86,7 +86,7 @@ export default function Profile({ navigation }) {
       title: "Minhas compras",
       subtitle: "Veja seus pedidos e histórico",
       icon: "receipt-outline",
-      action: () => navigation.navigate("Purchases"),
+      action: () => navigation.navigate("MeusPedidos"),
     },
     {
       title: "Alterar senha",

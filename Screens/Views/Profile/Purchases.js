@@ -136,7 +136,7 @@ export default function Purchases({ navigation }) {
         </Text>
         <TouchableOpacity
           style={[styles.shopButton, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate("Home", { screen: "Catalogo" })}
+          onPress={() => navigation.navigate("catalogoSalgados")}
         >
           <Text style={styles.shopButtonText}>Ir às compras</Text>
         </TouchableOpacity>
