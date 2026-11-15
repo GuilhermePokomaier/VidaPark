@@ -11,9 +11,8 @@ function formatMoney(value) {
   return `R$ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
 }
 
-// ⚠️ APENAS PARA TESTES: mostra o botão "Simular pagamento aprovado" na tela do Pix.
-// Coloque false (ou apague este bloco) quando for publicar o app de verdade.
-const MODO_TESTE_PIX = false;
+// APENAS PARA TESTES: Botão para simular pagamento Pix aprovado sem passar pelo banco.
+const MODO_TESTE_PIX = true;
 
 export default function Pagamento({ navigation, route }) {
   // Vem da tela Checkout: link de pagamento já criado (createPreference),

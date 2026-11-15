@@ -26,11 +26,11 @@ function SecaoLista({
 }) {
     const qtd = converterLista(valor).length;
 
-    const resumo =
+    const resumo = //Operador ternário para exibir a quantidade de itens ou "Opcional" se não houver nenhum.
         qtd === 0 ? "Opcional" : qtd === 1 ? "1 item" : `${qtd} itens`;
 
     return (
-        <View style={styles.secao}>
+        <View style={styles.secao}> 
             <TouchableOpacity
                 style={styles.secaoCabecalho}
                 onPress={onToggle}
@@ -48,7 +48,8 @@ function SecaoLista({
                 </View>
             </TouchableOpacity>
 
-            {aberto && (
+            
+            {aberto && ( //renderização condicional.
                 <View style={styles.secaoCorpo}>
                     <Text style={styles.ajuda}>Digite um item por linha</Text>
 
@@ -67,7 +68,7 @@ function SecaoLista({
     );
 }
 
-export default function AddPacote({ navigation, route }) {
+export default function AddPacote({ navigation }) {
 
     const [nome, setNome] = useState("");
     const [precoInicial, setPrecoInicial] = useState("");
@@ -105,7 +106,7 @@ export default function AddPacote({ navigation, route }) {
             const permissao =
                 await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-            if (!permissao.granted) {
+            if (!permissao.granted) { //permissão negada, exibe alerta e retorna.
                 Alert.alert(
                     "Permissão necessária",
                     "É necessário permitir o acesso à galeria para selecionar uma imagem."
@@ -479,6 +480,8 @@ export default function AddPacote({ navigation, route }) {
         </KeyboardAvoidingView>
     );
 }
+
+// Estilos (não importante para a lógica, mas mantém a aparência do app)
 
 const styles = StyleSheet.create({
     raiz: {
