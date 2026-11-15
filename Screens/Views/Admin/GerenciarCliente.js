@@ -6,7 +6,7 @@ import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { useTheme } from '../../../context/ThemeContext';
 
 export default function GerenciarCliente({ navigation }) {
-  const { theme } = useTheme();
+  const { theme } = useTheme(); 
   const [clientes, setClientes] = useState([]);
 
   async function carregarClientes() {

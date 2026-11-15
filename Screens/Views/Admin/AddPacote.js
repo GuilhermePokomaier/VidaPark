@@ -458,16 +458,6 @@ export default function AddPacote({ navigation }) {
             {/* BOTÕES FIXOS NO RODAPÉ */}
             <View style={styles.rodape}>
                 <Button
-                    style={styles.botaoVoltar}
-                    buttonColor="#F7A8C8"
-                    textColor="#8b3151"
-                    mode="contained"
-                    onPress={() => navigation.goBack()}
-                >
-                    Voltar
-                </Button>
-
-                <Button
                     style={styles.botaoCadastrar}
                     buttonColor="#E84890"
                     textColor="#ffffff"

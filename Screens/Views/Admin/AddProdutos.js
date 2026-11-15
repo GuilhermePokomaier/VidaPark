@@ -283,15 +283,7 @@ export default function AddProdutos({ navigation, route }) {
                     Cadastrar
                 </Button>
 
-                <Button
-                    style={styles.button}
-                    buttonColor="#F7A8C8"
-                    textColor="#8b3151"
-                    mode="contained"
-                    onPress={() => navigation.goBack()}
-                >
-                    Voltar
-                </Button>
+              
             </View>
         </View>
     );

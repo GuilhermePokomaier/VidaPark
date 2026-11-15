@@ -111,10 +111,10 @@ export default function EditPacote({ navigation, route }) {
                 });
 
             if (
-                !resultado.canceled &&
-                resultado.assets?.length > 0
+                !resultado.canceled && //Se o usuário não cancelou a seleção da imagem e
+                resultado.assets?.length > 0 // ele selecionou pelo menos uma imagem, então
             ) {
-                setImagem(resultado.assets[0].uri);
+                setImagem(resultado.assets[0].uri);// Atualiza o estado da imagem com a URI da imagem selecionada
             }
         } catch (error) {
             console.log(

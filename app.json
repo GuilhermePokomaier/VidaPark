@@ -11,6 +11,7 @@
     },
     "android": {
       "package": "com.vidapark.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -29,11 +30,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
+          "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#202040"
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
