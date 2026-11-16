@@ -12,7 +12,7 @@ function formatMoney(value) {
 }
 
 // APENAS PARA TESTES: Botão para simular pagamento Pix aprovado sem passar pelo banco.
-const MODO_TESTE_PIX = false;
+const MODO_TESTE_PIX = true;
 
 export default function Pagamento({ navigation, route }) {
   // Vem da tela Checkout: link de pagamento já criado (createPreference),
