@@ -7,6 +7,25 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import * as ImagePicker from 'expo-image-picker';
 import { imagemParaDataUri } from "../utils/imagem";
 
+// ─────────────────────────────────────────────
+// PALETA "VIDA PARK"
+// ─────────────────────────────────────────────
+const COLORS = {
+  azulVidaPark: "#202040",
+  rosaVidaPark: "#E84890",
+  branco: "#F8F8F8",
+  rosaClaro: "#F7A8C8",
+  azulSuave: "#34345C",
+  rosaEscuro: "#C93678",
+  textoSecundario: "#6B6B85",
+  textoMutado: "#B3B3C6",
+  bordaClara: "#EDEDF2",
+  verdeSucesso: "#2E9E5B",
+  verdeFundo: "#E4F5EA",
+  laranjaAviso: "#D98A1F",
+  laranjaFundo: "#FCEFD9",
+};
+
 export default function EditProduct({ navigation, route }) {
     const { produtoId } = route.params;
 
@@ -97,19 +116,19 @@ export default function EditProduct({ navigation, route }) {
                 accessibilityLabel="Voltar"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-                <Ionicons name="chevron-back" size={26} color="#E84890" />
+                <Ionicons name="chevron-back" size={26} color={COLORS.rosaVidaPark} />
             </TouchableOpacity>
 
             <Text style={styles.txt}>Editar Produto</Text>
             
-            <TextInput style={styles.barra} placeholder="Nome" value={nome} onChangeText={setNome} placeholderTextColor={'#e58aaa'} />
-            <TextInput style={styles.barra} placeholder="Valor" value={valor} onChangeText={setValor} placeholderTextColor={'#e58aaa'} />
-            <TextInput style={styles.barra} placeholder="Descrição" value={descricao} onChangeText={setDescricao} placeholderTextColor={'#e58aaa'} />
+            <TextInput style={styles.barra} placeholder="Nome" value={nome} onChangeText={setNome} placeholderTextColor={COLORS.textoMutado} />
+            <TextInput style={styles.barra} placeholder="Valor" value={valor} onChangeText={setValor} placeholderTextColor={COLORS.textoMutado} />
+            <TextInput style={styles.barra} placeholder="Descrição" value={descricao} onChangeText={setDescricao} placeholderTextColor={COLORS.textoMutado} />
 
             <Button 
                 style={styles.GaleriaButton} 
-                buttonColor="#8b3151" 
-                textColor="#ffffff" 
+                buttonColor={COLORS.rosaEscuro} 
+                textColor={COLORS.branco} 
                 mode='contained' 
                 onPress={escolherImagem}
             >
@@ -121,8 +140,8 @@ export default function EditProduct({ navigation, route }) {
             )}
 
             <View style={styles.colunaBotoes}>
-                <Button style={styles.button} buttonColor="#e58aaa" textColor="#8b3151" mode='contained' onPress={Salvar}>Salvar</Button>
-                <Button style={styles.button} buttonColor="#e58aaa" textColor="#8b3151" mode='contained' onPress={() => navigation.goBack()}>Voltar</Button>
+                <Button style={styles.button} buttonColor={COLORS.rosaVidaPark} textColor={COLORS.branco} mode='contained' onPress={Salvar}>Salvar</Button>
+                <Button style={styles.button} buttonColor={COLORS.azulSuave} textColor={COLORS.rosaClaro} mode='contained' onPress={() => navigation.goBack()}>Voltar</Button>
             </View>
         </View>
     );
@@ -133,7 +152,7 @@ const styles = StyleSheet.create({
         fontSize: 36,  
         fontWeight: 'bold',
         fontStyle: 'italic',
-        color: '#e58aaa',
+        color: COLORS.rosaVidaPark,
         textAlign: 'center',
         marginBottom: 30,
         textShadowColor: 'rgba(0, 0, 0, 0.9)',
@@ -145,7 +164,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#290814',
+        backgroundColor: COLORS.azulVidaPark,
     },
     backButton: {
         position: 'absolute',
@@ -165,7 +184,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginVertical: 10,
         borderWidth: 1,
-        borderColor: '#e58aaa'
+        borderColor: COLORS.rosaClaro
     },
     button: {
         width: '100%',
@@ -182,20 +201,20 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 12,
         marginVertical: 8,
-        backgroundColor: '#3d0c1e',
+        backgroundColor: COLORS.azulSuave,
         borderWidth: 1,
-        borderColor: '#8b3151',
+        borderColor: COLORS.rosaEscuro,
         alignSelf: 'center',
-        color: '#ffffff',
+        color: COLORS.branco,
     },
     picker: {
         width: '100%',
         height: 50,
-        color: '#e58aaa',
-        backgroundColor: '#3d0c1e',
+        color: COLORS.rosaVidaPark,
+        backgroundColor: COLORS.azulSuave,
     },
     itemPicker: {
-        backgroundColor: '#3d0c1e',
-        color: '#ffffff',
+        backgroundColor: COLORS.azulSuave,
+        color: COLORS.branco,
     }
 });
