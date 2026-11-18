@@ -1,10 +1,10 @@
-# 🎉 App de Gestão e Reservas para Espaço de Festas
+#  App de Gestão e Reservas para Espaço de Festas
 
 Aplicativo mobile desenvolvido como **Trabalho de Conclusão de Curso (TCC)** para um espaço de festas real. A plataforma digitaliza o atendimento do negócio, permitindo que clientes conheçam e contratem **pacotes de locação** e **comprem lanches**, enquanto a administração gerencia pacotes, pedidos e vendas em um só lugar.
 
 ---
 
-## 📌 Sobre o projeto
+##  Sobre o projeto
 
 Espaços de festas costumam depender de contato manual (mensagens e ligações) para apresentar pacotes, informar valores e registrar pedidos. Este app centraliza esse processo, trazendo mais organização para o negócio e praticidade para o cliente.
 
@@ -15,7 +15,7 @@ O sistema é dividido em dois perfis:
 
 ---
 
-## ✨ Funcionalidades
+##  Funcionalidades
 
 ### Cliente
 - Tela inicial com dois serviços: **locação de pacotes** e **venda de lanches**
@@ -31,7 +31,7 @@ O sistema é dividido em dois perfis:
 
 ---
 
-## 🛠️ Tecnologias
+##  Tecnologias
 
 | Camada | Tecnologia |
 |---|---|
@@ -44,14 +44,14 @@ O sistema é dividido em dois perfis:
 
 ---
 
-## 🗂️ Estrutura de dados (Firestore)
+##  Estrutura de dados (Firestore)
 
 - **`pacotes`**: nome, preço inicial, descrição, destaques, itens inclusos, estrutura, regras, ambiente, duração, máximo de convidados, imagem, status de popular e disponibilidade
 - **`pedidos`**: pedidos realizados pelos clientes, usados na tela de gestão de vendas
 
 ---
 
-## 🚀 Como executar
+##  Como executar
 
 ```bash
 # Clonar o repositório
@@ -71,7 +71,7 @@ Configure suas credenciais do Firebase em `Firebase/firebaseConfig.js` antes de 
 
 ---
 
-## 🗺️ Próximos passos
+##  Próximos passos
 
 - [ ] Integração real de pagamentos com **Mercado Pago** (registro na coleção `payments`)
 - [ ] Refinamento da interface e do fluxo de navegação
@@ -79,13 +79,10 @@ Configure suas credenciais do Firebase em `Firebase/firebaseConfig.js` antes de 
 
 ---
 
-## 🎓 Contexto acadêmico
+##  Contexto acadêmico
 
 Projeto desenvolvido como Trabalho de Conclusão de Curso, aplicando conceitos de sistemas de informação, como **sistemas de processamento de transações (SPT)**, ao setor de eventos e locação de espaços.
 
 ---
 
-## 👤 Autor
 
-**Guilherme**
-Interesse em GovTech e desenvolvimento de software para o setor público.
